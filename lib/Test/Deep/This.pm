@@ -4,26 +4,52 @@ use strict;
 use base qw(Exporter);
 our @EXPORT = (qw/this/);
 
+use Data::Dump qw(pp);
 use Test::Deep;
+use base qw(Test::Deep::Cmp);
+
 
 sub this() {
-    bless { code => sub { $_[0] }, msg => "." };
+    return __PACKAGE__->new({ code => sub { $_[0] }, msg => "<<this>>" });
 }
 
-sub apply {
-    ref $_[0] eq 'Test::Deep::This' ? $_[0]->{code}($_[1]) : $_[0];
+sub init {
+    my $self = shift;
+    my ($data) = @_;
+
+    $self->{$_} = $data->{$_} for keys %$data;
+    return $self;
+
 }
 
-sub upgrade {
+sub descend {
+    my $self = shift;
+    my ($val) = @_;
+
+    return $self->{code}->($val);
+}
+
+sub renderExp {
+    my $self = shift;
+    return "$self";
+}
+
+sub _upgrade {
     my $self = shift;
     return $self if ref $self eq 'Test::Deep::This';
-    return bless {
+    die "$self: not a simple scalar" if ref $self;
+    return __PACKAGE__->new({
         code => sub { return $self },
-        msg => "\"$self\"", #FIXME: quote
-    }
+        msg => pp($self),
+    });
 }
 
-sub operator {
+sub _operator1 {
+    my ($op) = @_;
+    return eval "sub { $op(\$_[0]) }";
+}
+
+sub _operator2 {
     my ($op) = @_;
     return eval "sub { \$_[0] $op \$_[1] }";
 }
@@ -33,40 +59,41 @@ use overload '""' => sub { $_[0]->{msg} };
 use overload
     map {
         my $op = $_;
-        my $operator = operator($op);
+        my $operator = _operator2($op);
   
         $op => sub {
             my ($left, $right, $reorder) = @_;
             ($left, $right) = ($right, $left) if $reorder;
-            $left = upgrade($left);
-            $right = upgrade($right);
-            return code(sub {
-                my $val = shift;
-                my $ret = $operator->($left->{code}->($val), $right->{code}->($val));
-                return $ret, "("."$left".") $op ("."$right".")";
-            });
-        }
-    } qw/> < >= <= == != lt gt le ge eq ne/;
-
-use overload
-    map {
-        my $op = $_;
-        my $operator = operator($op);
-  
-        $op => sub {
-            my ($left, $right, $reorder) = @_;
-            ($left, $right) = ($right, $left) if $reorder;
-            $left = upgrade($left);
-            $right = upgrade($right);
-            return bless {
+            $left = _upgrade($left);
+            $right = _upgrade($right);
+            return __PACKAGE__->new({
                 code => sub {
                     my $val = shift;
                     $operator->($left->{code}->($val), $right->{code}->($val));
                 }, 
-                msg => "("."$left".") $op ("."$right".")",
-            };
+                # overload("") returns a string representation of a predicate
+                # but overload(.) generates a delayed operator '.'
+                msg => "("."$left".") $op ("."$right".")", #FIXME: track operator priorities and omit braces where possible
+            });
         }
-    } qw(+ - * / % ** << >> x .);
+    } qw(> < >= <= == != <=> lt gt le ge eq ne cmp), qw(+ - * / % ** << >> x .);
+
+use overload
+    map {
+        my $op = $_;
+        my $operator = _operator1($op);
+  
+        $op => sub {
+            my ($arg) = @_;
+            return __PACKAGE__->new({
+                code => sub {
+                    my $val = shift;
+                    $operator->($arg->{code}->($val));
+                }, 
+                msg => "$op ("."$arg".")",
+            });
+        }
+    } qw(! neg atan2 cos sin exp abs log sqrt);
 
 use overload 'fallback' => 0;
 
