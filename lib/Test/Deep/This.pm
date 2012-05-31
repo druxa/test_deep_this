@@ -4,7 +4,7 @@ use strict;
 use base qw(Exporter);
 our @EXPORT = (qw/this/);
 
-use Data::Dump qw(pp);
+use Data::Dumper;
 use Test::Deep;
 use base qw(Test::Deep::Cmp);
 
@@ -34,13 +34,18 @@ sub renderExp {
     return "$self";
 }
 
+sub _dump {
+    my $dumper = Data::Dumper->new([@_]);
+    $dumper->Terse(1)->Indent(0);
+    return $dumper->Dump;
+}
+
 sub _upgrade {
     my $self = shift;
     return $self if ref $self eq 'Test::Deep::This';
-    die "$self: not a simple scalar" if ref $self;
     return __PACKAGE__->new({
         code => sub { return $self },
-        msg => pp($self),
+        msg => _dump($self),
     });
 }
 
