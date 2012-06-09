@@ -31,13 +31,13 @@ Test::Deep::This - Test::Deep extension to check predicates on plain scalars
 
 =head1 DESCRIPTION
 
-Test::Deep::This module extends Test::Deep framework with a new C<this> keyword to denote a "current" nested scalar.
+C<Test::Deep::This> module extends L<Test::Deep> framework with a new C<this> keyword to denote a "current" nested scalar.
 Standard unary and binary perl operators can be applied to C<this> to construct some complex predicate expressions.
 Those predicates are completely interoperable with other Test::Deep comparison operations like C<re>.
 
-Some native Test::Deep comparators may be expressed via C<this> in a somewhat native manner.
-For example C<bool(1)> is just C<this> and C<bool(0)> is C<!this>. C<num(10, 0.01)> might be written as C<abs(this - 10) < 0.01>.
-Any expression of C<this> could be expressed using the Test::Deep C<code> functor, but the later lacks proper diagnostics when the test check fails.
+Some native C<Test::Deep> comparators may be expressed via C<this> in a somewhat native manner.
+For example C<bool(1)> is just C<this> and C<bool(0)> is C<!this>. C<num(10, 0.01)> might be written as C<< abs(this - 10) < 0.01 >>.
+Any expression of C<this> could be expressed using the C<Test::Deep> C<code> functor, but the later lacks proper diagnostics when the test check fails.
 
 =head1 SEE ALSO
 

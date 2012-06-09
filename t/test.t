@@ -38,7 +38,7 @@ check_test(
 
 check_test(
     sub {
-        cmp_deeply(["123"], [re(qr/^\d+(\d)$/, [this < 4]) & this > 100]);
+        cmp_deeply(["123"], [re(qr/^\d+(\d)$/, [this < 4]) & (this > 100)]);
     },
     {
         ok => 1,
